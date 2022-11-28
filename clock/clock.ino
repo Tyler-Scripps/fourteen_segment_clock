@@ -9,6 +9,7 @@ void setup() {
   digit1.erase();
   delay(1000);
   digit1.fill(50, 50, 50);
+  FastLED.show();
 }
 
 
