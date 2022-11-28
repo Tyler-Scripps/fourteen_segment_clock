@@ -1,7 +1,112 @@
+#include <ESPUI.h>
+#include <ESPUIclient.h>
+#include <ESPUIclientFsm.h>
+#include <ESPUIcontrol.h>
+#include <dataControlsJS.h>
+#include <dataGraphJS.h>
+#include <dataIndexHTML.h>
+#include <dataNormalizeCSS.h>
+#include <dataSliderJS.h>
+#include <dataStyleCSS.h>
+#include <dataTabbedcontentJS.h>
+#include <dataZeptoJS.h>
+
 #include "./src/14-segment-digit/fourteen_segment_digit.h"
+
+#include <DNSServer.h>
+#include <WiFi.h>
+
+#include <Preferences.h>
+
+//wifi stuff
+Preferences preferences;
+const char* hostname = "segClock";
+String ssid = "ESPUI";
+String password = "espui";
+
+const byte DNS_PORT = 53;
+IPAddress apIP(192, 168, 4, 1);
+DNSServer dnsServer;
+
+// espui variables
+int timeLabelId;
+int timeId;
+
+String tempSSID;
+String tempPassword;
 
 CRGB arr1[39];
 fourteen_segment_digit digit1; 
+
+// ESPUI callbacks
+void timeCallback(Control *sender, int type) {
+  if(type == TM_VALUE) { 
+    timeStr = sender->value.substring(sender->value.indexOf("T") + 1, sender->value.length() - 5);
+    Serial.print("Time: ");
+    Serial.println(timeStr);
+    ESPUI.print(timeLabelId, timeStr);
+  }
+}
+
+void timeButtonCallback(Control* sender, int type)
+{
+    switch (type)
+    {
+    case B_DOWN:
+        // Serial.println("Button DOWN");
+        break;
+
+    case B_UP:
+        Serial.println("Updating Time");
+        ESPUI.updateTime(timeId);
+        break;
+    }
+}
+
+void wifiButtonCallback(Control* sender, int type) {
+  if (type == B_UP) {
+    ssid = tempSSID;
+    password = tempPassword;
+    Serial.print("ssid: ");
+    Serial.println(ssid);
+    Serial.print("password: ");
+    Serial.println(password);
+    preferences.putString("ssid", ssid); 
+    preferences.putString("password", password);
+  }
+}
+
+void wifiSSIDCallback(Control* sender, int type) {
+  tempSSID = sender->value;
+}
+
+void wifiPasswordCallback(Control* sender, int type) {
+  tempPassword = sender->value;
+}
+
+void messageCallback(Control* sender, int type) {
+  // text = sender->value;
+  String temp = "";
+  for(int i = 0; i < NUM_DIGITS; i++) {
+    temp.concat(' ');
+  }
+  text = temp + sender->value + temp;
+}
+
+void modeSelectCallback(Control* sender, int value)
+{
+  mode = sender->value.toInt();
+  // Serial.print("mode: ");
+  // Serial.println(mode);
+}
+
+void colorCallback(Control* sender, int value) {
+  int number = (int) strtoul( &sender->value[1], NULL, 16);
+  // Split them up into r, g, b values
+  // globalRed = number >> 16;
+  // globalGreen = number >> 8 & 0xFF;
+  // globalBlue = number & 0xFF;
+}
 
 void setup() {
   FastLED.addLeds<NEOPIXEL, 19>(arr1, 39);
