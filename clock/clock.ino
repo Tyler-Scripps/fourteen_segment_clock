@@ -35,7 +35,7 @@ int timeId;
 String tempSSID;
 String tempPassword;
 
-CRGB arr1[39];
+CRGB arr1[251];
 fourteen_segment_digit digit1; 
 
 // ESPUI callbacks
