@@ -18,6 +18,8 @@
 
 #include <Preferences.h>
 
+#define NUM_DIGITS 1
+
 //wifi stuff
 Preferences preferences;
 const char* hostname = "segClock";
@@ -34,6 +36,10 @@ int timeId;
 
 String tempSSID;
 String tempPassword;
+
+String timeStr;
+String text;
+int mode = 0;
 
 CRGB arr1[251];
 fourteen_segment_digit digit1; 
