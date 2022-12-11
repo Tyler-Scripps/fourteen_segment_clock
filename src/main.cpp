@@ -3,20 +3,47 @@
 #include "webpage.h"  //stores the webpage that will be served
 #include "fourteen_segment_digit.h"
 #include <ESP32Time.h>  //for accessing rtc
+#include <elapsedMillis.h>  //provides timing function
+
 
 #define NUM_DIGITS 12
+#define LEDS_IN_DIGIT 251
+#define DEBUG true
  
 const char *ssid = "bigclock";
 const char *password = "merrychristmas";
+
+uint8_t globalRed = 50;
+uint8_t globalGreen = 0;
+uint8_t globalBlue = 0;
+
+int mode = 0;
+elapsedMillis lastUpdate;
+String tempStr;
 
 ESP32Time rtc;
  
 AsyncWebServer server(80);
 
-CRGB crgbArr[NUM_DIGITS][171];
+CRGB crgbArr[NUM_DIGITS][LEDS_IN_DIGIT];
 fourteen_segment_digit digits[NUM_DIGITS];
 
+String paddedString(int unpadded) {
+  if (unpadded < 10 && unpadded > -10)  //check if between -10 and 10
+  {
+    return '0' + String(unpadded);
+  } else {
+    return String(unpadded);
+  }
+  
+}
+
 void displayString(String str) {
+  if (DEBUG)
+  {
+    Serial.println(str);
+  }
+  
   uint8_t tempLength = 0;
   if (str.length() < NUM_DIGITS) {
     tempLength = str.length();
@@ -30,21 +57,69 @@ void displayString(String str) {
   FastLED.show();
 }
 
+int testCounter = 0;
+void testDigits() {
+  if (DEBUG)
+  {
+    Serial.print("testCounter: ");
+    Serial.println(testCounter);
+  }
+  
+  for (uint8_t i = 0; i < NUM_DIGITS; i++)
+  {
+    if (DEBUG)
+    {
+      Serial.print("i: ");
+      Serial.println(i);
+      // Serial.print(" ");
+      Serial.print("mode: ");
+      Serial.println(mode);
+    }
+    digits[i].erase();
+    digits[i].setSegment(testCounter, globalRed, globalGreen, globalBlue);
+    if (DEBUG) {
+      Serial.print("mode: ");
+      Serial.println(mode);
+      Serial.println();
+    }
+  }
+  FastLED.show();
+  if (DEBUG)
+  {
+    // Serial.println();
+    Serial.println("finished setting digits");
+    Serial.print("mode: ");
+    Serial.println(mode);
+  }
+  
+  testCounter++;
+  if (testCounter >= 14)
+  {
+    testCounter = 0;
+  }
+  
+  if (DEBUG)
+  {
+    Serial.println("finished testDigits()");
+  }
+  
+}
+
  
 void setup(){
-  FastLED.addLeds<NEOPIXEL, 19>(crgbArr[0], 171);
-  FastLED.addLeds<NEOPIXEL, 18>(crgbArr[1], 171);
-  FastLED.addLeds<NEOPIXEL, 5>(crgbArr[2], 171);
-  FastLED.addLeds<NEOPIXEL, 17>(crgbArr[3], 171);
-  FastLED.addLeds<NEOPIXEL, 16>(crgbArr[4], 171);
-  FastLED.addLeds<NEOPIXEL, 4>(crgbArr[5], 171);
-  FastLED.addLeds<NEOPIXEL, 0>(crgbArr[6], 171);
-  FastLED.addLeds<NEOPIXEL, 2>(crgbArr[7], 171);
+  FastLED.addLeds<NEOPIXEL, 19>(crgbArr[0], LEDS_IN_DIGIT);
+  FastLED.addLeds<NEOPIXEL, 18>(crgbArr[1], LEDS_IN_DIGIT);
+  FastLED.addLeds<NEOPIXEL, 5>(crgbArr[2], LEDS_IN_DIGIT);
+  FastLED.addLeds<NEOPIXEL, 17>(crgbArr[3], LEDS_IN_DIGIT);
+  FastLED.addLeds<NEOPIXEL, 16>(crgbArr[4], LEDS_IN_DIGIT);
+  FastLED.addLeds<NEOPIXEL, 4>(crgbArr[5], LEDS_IN_DIGIT);
+  FastLED.addLeds<NEOPIXEL, 0>(crgbArr[6], LEDS_IN_DIGIT);
+  FastLED.addLeds<NEOPIXEL, 2>(crgbArr[7], LEDS_IN_DIGIT);
 
-  FastLED.addLeds<NEOPIXEL, 32>(crgbArr[8], 171);
-  FastLED.addLeds<NEOPIXEL, 33>(crgbArr[9], 171);
-  FastLED.addLeds<NEOPIXEL, 25>(crgbArr[10], 171);
-  FastLED.addLeds<NEOPIXEL, 26>(crgbArr[11], 171);
+  FastLED.addLeds<NEOPIXEL, 32>(crgbArr[8], LEDS_IN_DIGIT);
+  FastLED.addLeds<NEOPIXEL, 33>(crgbArr[9], LEDS_IN_DIGIT);
+  FastLED.addLeds<NEOPIXEL, 25>(crgbArr[10], LEDS_IN_DIGIT);
+  FastLED.addLeds<NEOPIXEL, 26>(crgbArr[11], LEDS_IN_DIGIT);
 
   for (uint8_t i = 0; i < NUM_DIGITS; i++)
   {
@@ -53,8 +128,12 @@ void setup(){
   }
   
 
-
-  Serial.begin(9600);
+  if (DEBUG)
+  {
+    Serial.begin(9600);
+  }
+  
+  
  
   WiFi.softAP(ssid, password);
  
@@ -66,8 +145,10 @@ void setup(){
   server.on("/time", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/plain", "OK");
     if (request->hasParam("value")) {
-      Serial.print("time: ");
-      Serial.println(request->getParam("value")->value());
+      if (DEBUG) {
+        Serial.print("time: ");
+        Serial.println(request->getParam("value")->value());
+      }
       displayString(request->getParam("value")->value());
       //will recieve with month being zero indexed
       //         s  m  h  d  m  y
@@ -86,6 +167,13 @@ void setup(){
 
   server.on("/mode", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/plain", "OK");
+    if (request->hasParam("value")) {
+      if (DEBUG) {
+        Serial.print("mode: ");
+        Serial.println(request->getParam("value")->value());
+      }
+      mode = request->getParam("value")->value().toInt();
+    }
   });
  
   server.begin();
@@ -97,5 +185,31 @@ void setup(){
 }
  
 void loop(){
-
+  if (lastUpdate > 1000)
+  {
+    lastUpdate = 0;
+    if (DEBUG)
+    {
+      Serial.print("mode: ");
+      Serial.println(mode);
+    }
+    
+    switch (mode)
+    {
+    case 0: //testing
+      testDigits();
+      break;
+    case 1: //base 10
+      tempStr = paddedString(rtc.getSecond()) + paddedString(rtc.getMinute());
+      displayString(tempStr);
+      break;
+    
+    default:
+      if(DEBUG) {
+        Serial.println("Invalid mode");
+      }
+      break;
+    }
+  }
+  
 }

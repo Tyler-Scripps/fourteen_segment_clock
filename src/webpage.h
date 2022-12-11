@@ -14,12 +14,21 @@ const char index_html[] PROGMEM = R"rawliteral(
 <body>
   <h2>Big Clock</h2>
   <button onclick="setTime()">Update Time</button>
+  <select onchange="setMode()" id="modeSelect">
+    <option value="0">Debug</option>
+    <option value="1">Decimal Time</option>
+  </select>
 <script>
 function setTime() {
-    var xhr = new XMLHttpRequest();
-    const time = new Date();
-    xhr.open("GET", "/time?value="+ time.getSeconds().toString().padStart(2, '0') + ',' + time.getMinutes().toString().padStart(2, '0') + ',' + time.getHours().toString().padStart(2, '0') + ',' + time.getDate().toString().padStart(2, '0') + ',' + time.getMonth().toString().padStart(2, '0') + ',' + time.getFullYear(), true);
-    xhr.send();
+  var xhr = new XMLHttpRequest();
+  const time = new Date();
+  xhr.open("GET", "/time?value="+ time.getSeconds().toString().padStart(2, '0') + ',' + time.getMinutes().toString().padStart(2, '0') + ',' + time.getHours().toString().padStart(2, '0') + ',' + time.getDate().toString().padStart(2, '0') + ',' + time.getMonth().toString().padStart(2, '0') + ',' + time.getFullYear(), true);
+  xhr.send();
+}
+function setMode() {
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", "/mode?value=" + document.getElementById("modeSelect").value, true);
+  xhr.send();
 }
 </script>
 </body>
