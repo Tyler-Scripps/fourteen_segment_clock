@@ -17,6 +17,9 @@ uint8_t globalRed = 50;
 uint8_t globalGreen = 0;
 uint8_t globalBlue = 0;
 
+bool militaryTime = false;
+uint8_t clockBase = 10;
+
 int mode = 0;
 elapsedMillis lastUpdate;
 String tempStr;
@@ -28,14 +31,30 @@ AsyncWebServer server(80);
 CRGB crgbArr[NUM_DIGITS][LEDS_IN_DIGIT];
 fourteen_segment_digit digits[NUM_DIGITS];
 
-String paddedString(int unpadded) {
-  if (unpadded < 10 && unpadded > -10)  //check if between -10 and 10
+String paddedString(int unpadded, char padChar, uint8_t base, uint8_t numdigits) {
+  // if (unpadded < 10 || unpadded > -10)  //check if between -10 and 10
+  // {
+  //   return '0' + String(unpadded);
+  // } else {
+  //   return String(unpadded);
+  // }
+  String newStr = String(unpadded, base);
+  while (newStr.length() < numdigits)
   {
-    return '0' + String(unpadded);
-  } else {
-    return String(unpadded);
+    newStr = padChar + newStr;
+  }
+  return newStr;
+}
+
+String createBaseTime(uint8_t base) {
+  String baseTime = paddedString(rtc.getHour(militaryTime), ' ', base, 6);
+  baseTime += String(rtc.getMinute(), base);
+  if (base >= 8) //bases less than 8 require 3 digits to represent decimal 59 so it will be hard to read on only 6 digits for minutes and seconds
+  {
+    baseTime += paddedString(rtc.getSecond(), ' ', base, NUM_DIGITS - baseTime.length());
   }
   
+  return baseTime;
 }
 
 void displayString(String str) {
@@ -52,7 +71,7 @@ void displayString(String str) {
   }
   for (uint8_t i = 0; i < tempLength; i++)
   {
-    digits[i].setChar(str.charAt(i), 50, 0, 0);
+    digits[i].setChar(str.charAt(i), globalRed, globalGreen, globalBlue);
   }
   FastLED.show();
 }
@@ -67,30 +86,30 @@ void testDigits() {
   
   for (uint8_t i = 0; i < NUM_DIGITS; i++)
   {
-    if (DEBUG)
-    {
-      Serial.print("i: ");
-      Serial.println(i);
-      // Serial.print(" ");
-      Serial.print("mode: ");
-      Serial.println(mode);
-    }
+    // if (DEBUG)
+    // {
+    //   Serial.print("i: ");
+    //   Serial.println(i);
+    //   // Serial.print(" ");
+    //   Serial.print("mode: ");
+    //   Serial.println(mode);
+    // }
     digits[i].erase();
     digits[i].setSegment(testCounter, globalRed, globalGreen, globalBlue);
-    if (DEBUG) {
-      Serial.print("mode: ");
-      Serial.println(mode);
-      Serial.println();
-    }
+    // if (DEBUG) {
+    //   Serial.print("mode: ");
+    //   Serial.println(mode);
+    //   Serial.println();
+    // }
   }
   FastLED.show();
-  if (DEBUG)
-  {
-    // Serial.println();
-    Serial.println("finished setting digits");
-    Serial.print("mode: ");
-    Serial.println(mode);
-  }
+  // if (DEBUG)
+  // {
+  //   // Serial.println();
+  //   Serial.println("finished setting digits");
+  //   Serial.print("mode: ");
+  //   Serial.println(mode);
+  // }
   
   testCounter++;
   if (testCounter >= 14)
@@ -98,10 +117,10 @@ void testDigits() {
     testCounter = 0;
   }
   
-  if (DEBUG)
-  {
-    Serial.println("finished testDigits()");
-  }
+  // if (DEBUG)
+  // {
+  //   Serial.println("finished testDigits()");
+  // }
   
 }
 
@@ -175,6 +194,62 @@ void setup(){
       mode = request->getParam("value")->value().toInt();
     }
   });
+
+  server.on("/24h", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "OK");
+    if (request->hasParam("value")) 
+    {
+      if (request->getParam("value")->value() == "true") {
+        militaryTime = true;
+      } else if (request->getParam("value")->value() == "false") {
+        militaryTime = false;
+      }
+    }
+    if (DEBUG) {
+      Serial.print("Set 24h time to: ");
+      Serial.println(request->getParam("value")->value());
+    }
+  });
+
+  server.on("/color", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (DEBUG) {
+      Serial.print("Set color to: ");
+    }
+    if (request->hasParam("red")) {
+      globalRed = request->getParam("red")->value().toInt();
+      if (DEBUG) {
+        Serial.print(globalRed);
+        Serial.print(", ");
+      }
+    }
+    if (request->hasParam("green")) {
+      globalGreen = request->getParam("green")->value().toInt();
+      if (DEBUG) {
+        Serial.print(globalGreen);
+        Serial.print(", ");
+      }
+    }
+    if (request->hasParam("blue")) {
+      globalBlue = request->getParam("blue")->value().toInt();
+      if (DEBUG) {
+        Serial.print(globalBlue);
+        Serial.print(", ");
+      }
+    }
+    if (DEBUG) {
+        Serial.println();
+      }
+  });
+
+  server.on("/base", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("value")) {
+      clockBase = request->getParam("value")->value().toInt();
+    }
+    if (DEBUG) {
+      Serial.print("Set to base: ");
+      Serial.println(request->getParam("value")->value());
+    }
+  });
  
   server.begin();
   
@@ -199,8 +274,9 @@ void loop(){
     case 0: //testing
       testDigits();
       break;
-    case 1: //base 10
-      tempStr = paddedString(rtc.getSecond()) + paddedString(rtc.getMinute());
+    case 1: //base number mode
+      // tempStr = paddedString(rtc.getSecond(), '0', clockBase, 2) + paddedString(rtc.getMinute(), '0', clockBase, 2);
+      tempStr = createBaseTime(clockBase);
       displayString(tempStr);
       break;
     
