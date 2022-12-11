@@ -1,12 +1,15 @@
 #include "WiFi.h"
 #include "ESPAsyncWebServer.h"
-#include "webpage.h"
+#include "webpage.h"  //stores the webpage that will be served
 #include "fourteen_segment_digit.h"
+#include <ESP32Time.h>  //for accessing rtc
 
 #define NUM_DIGITS 12
  
 const char *ssid = "bigclock";
 const char *password = "merrychristmas";
+
+ESP32Time rtc;
  
 AsyncWebServer server(80);
 
@@ -66,7 +69,23 @@ void setup(){
       Serial.print("time: ");
       Serial.println(request->getParam("value")->value());
       displayString(request->getParam("value")->value());
+      //will recieve with month being zero indexed
+      //         s  m  h  d  m  y
+      //example: 19,04,19,10,11,2022
+      //         0123456789012345678
+      String tempString = request->getParam("value")->value();
+      int seconds = tempString.substring(0, 2).toInt();
+      int minutes = tempString.substring(3, 5).toInt();
+      int hours = tempString.substring(6, 8).toInt();
+      int days = tempString.substring(9, 11).toInt();
+      int month = tempString.substring(12, 14).toInt() + 1;
+      int year = tempString.substring(15).toInt();
+      rtc.setTime(seconds, minutes, hours, days, month, year);  //seconds, minutes, hours, day of month, month (1 indexed), year
     }
+  });
+
+  server.on("/mode", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "OK");
   });
  
   server.begin();
