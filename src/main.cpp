@@ -60,6 +60,7 @@ String createBaseTime(uint8_t base) {
 void displayString(String str) {
   if (DEBUG)
   {
+    Serial.print("displaying: ");
     Serial.println(str);
   }
   

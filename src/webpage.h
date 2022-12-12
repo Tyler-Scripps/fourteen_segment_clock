@@ -20,11 +20,15 @@ const char index_html[] PROGMEM = R"rawliteral(
     <option value="0">Debug</option>
     <option value="1">Numeric Time</option>
   </select>
-  <br>
-  <br>
+  <br><br>
   <input type="color" id="colorInput" value="#320000" oninput="setColor()">
-  <br>
-  <br>
+  <br><br>
+  <label for="baseInput">Numeric Base (2-36):</label>
+  <input type="number" id="baseInput" min="2" max="36" step="1" oninput="setBase()">
+  <br><br>
+  <input type="checkbox" id="militaryCheckbox" oninput="setMilitary()">
+  <label for="militaryCheckbox">24 Hour Time</label>
+  <br><br>
 <script>
 function setTime() {
   var xhr = new XMLHttpRequest();
@@ -43,6 +47,22 @@ function setColor() {
   let color = document.getElementById("colorInput").value;
   var xhr = new XMLHttpRequest();
   let requestString = "/color?red=" + Number("0x" + color.slice(1,3)) + "&green=" + Number("0x" + color.slice(3,5)) + "&blue=" + Number("0x" + color.slice(5));
+  xhr.open("GET", requestString, true);
+  xhr.send();
+}
+
+function setBase() {
+	let base = document.getElementById("baseInput").value;
+	base = Math.min(Math.max(base, 2), 36);
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", "/base?value=" + base, true);
+  xhr.send();
+}
+
+function setMilitary() {
+  let requestString = "/24h?value=";
+  requestString += document.getElementById("militaryCheckbox").checked;
+  var xhr = new XMLHttpRequest();
   xhr.open("GET", requestString, true);
   xhr.send();
 }
