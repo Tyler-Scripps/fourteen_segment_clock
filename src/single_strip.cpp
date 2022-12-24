@@ -148,14 +148,14 @@ void setup(){
     //hours
     for (uint8_t i = 0; i < NUM_DIGITS/2; i++)
     {
-    digits[i].begin(crgbArrHours[i], 20, 19, 1);
+    digits[i].begin(crgbArrHours[i], 20, 19, 1, false, true);
     digits[i].erase();
     }
 
     //minutes
     for (uint8_t i = NUM_DIGITS/2; i < NUM_DIGITS; i++)
     {
-    digits[i].begin(crgbArrMinutes[i], 20, 19, 1);
+    digits[i].begin(crgbArrMinutes[i], 20, 19, 1, true, true);
     digits[i].erase();
     }
   
