@@ -28,7 +28,8 @@ ESP32Time rtc;
  
 AsyncWebServer server(80);
 
-CRGB crgbArr[NUM_DIGITS][LEDS_IN_DIGIT];
+CRGB crgbArrHours[NUM_DIGITS/2][LEDS_IN_DIGIT];
+CRGB crgbArrMinutes[NUM_DIGITS/2][LEDS_IN_DIGIT];
 fourteen_segment_digit digits[NUM_DIGITS];
 
 String paddedString(int unpadded, char padChar, uint8_t base, uint8_t numdigits) {
@@ -141,11 +142,20 @@ void setup(){
 //   FastLED.addLeds<NEOPIXEL, 25>(crgbArr[10], LEDS_IN_DIGIT);
 //   FastLED.addLeds<NEOPIXEL, 26>(crgbArr[11], LEDS_IN_DIGIT);
 
-    FastLED.addLeds<NEOPIXEL, 19>(*crgbArr, LEDS_IN_DIGIT * NUM_DIGITS);
+    FastLED.addLeds<NEOPIXEL, 19>(*crgbArrHours, LEDS_IN_DIGIT * (NUM_DIGITS/2));
+    FastLED.addLeds<NEOPIXEL, 18>(*crgbArrMinutes, LEDS_IN_DIGIT * (NUM_DIGITS/2));
 
-    for (uint8_t i = 0; i < NUM_DIGITS; i++)
+    //hours
+    for (uint8_t i = 0; i < NUM_DIGITS/2; i++)
     {
-    digits[i].begin(crgbArr[i], 20, 19, 1);
+    digits[i].begin(crgbArrHours[i], 20, 19, 1);
+    digits[i].erase();
+    }
+
+    //minutes
+    for (uint8_t i = NUM_DIGITS/2; i < NUM_DIGITS; i++)
+    {
+    digits[i].begin(crgbArrMinutes[i], 20, 19, 1);
     digits[i].erase();
     }
   
