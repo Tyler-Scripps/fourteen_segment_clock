@@ -19,12 +19,16 @@ const char index_html[] PROGMEM = R"rawliteral(
   <select oninput="setMode()" id="modeSelect">
     <option value="0">Debug</option>
     <option value="1">Numeric Time</option>
+    <option value="2">Message</option>
   </select>
   <br><br>
   <input type="color" id="colorInput" value="#320000" oninput="setColor()">
   <br><br>
   <label for="baseInput">Numeric Base (2-36):</label>
   <input type="number" id="baseInput" min="2" max="36" step="1" oninput="setBase()">
+  <br><br>
+  <label for="messageInput">Message:</label>
+  <input type="text" id="messageInput" oninput="setMessage()">
   <br><br>
   <input type="checkbox" id="militaryCheckbox" oninput="setMilitary()">
   <label for="militaryCheckbox">24 Hour Time</label>
@@ -54,9 +58,9 @@ function setColor() {
 function setBase() {
 	let base = document.getElementById("baseInput").value;
 	base = Math.min(Math.max(base, 2), 36);
-  var xhr = new XMLHttpRequest();
-  xhr.open("GET", "/base?value=" + base, true);
-  xhr.send();
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "/base?value=" + base, true);
+    xhr.send();
 }
 
 function setMilitary() {
@@ -64,6 +68,13 @@ function setMilitary() {
   requestString += document.getElementById("militaryCheckbox").checked;
   var xhr = new XMLHttpRequest();
   xhr.open("GET", requestString, true);
+  xhr.send();
+}
+
+function setMessage() {
+  let messageStr = "/message?value=" + document.getElementById("messageInput").value;
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", messageStr, true);
   xhr.send();
 }
 </script>

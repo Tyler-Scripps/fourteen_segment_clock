@@ -20,6 +20,8 @@ uint8_t globalBlue = 0;
 bool militaryTime = false;
 uint8_t clockBase = 10;
 
+String message = "";
+
 int mode = 0;
 elapsedMillis lastUpdate;
 String tempStr;
@@ -48,7 +50,18 @@ String paddedString(int unpadded, char padChar, uint8_t base, uint8_t numdigits)
 }
 
 String createBaseTime(uint8_t base) {
-  String baseTime = paddedString(rtc.getHour(militaryTime), ' ', base, 6);
+  String baseTime = paddedString(rtc.getHour(militaryTime), ' ', base, 6);  
+  if (base == 10 && rtc.getHour(militaryTime) < 10)
+  {
+    baseTime.setCharAt(4, '0');
+  }
+
+  if (base == 10 && rtc.getMinute() < 10)
+  {
+    baseTime += '0';
+  }
+  
+  
   baseTime += String(rtc.getMinute(), base);
   if (base >= 8) //bases less than 8 require 3 digits to represent decimal 59 so it will be hard to read on only 6 digits for minutes and seconds
   {
@@ -75,7 +88,7 @@ void displayString(String str) {
   {
     digits[i].setChar(str.charAt(i), globalRed, globalGreen, globalBlue);
   }
-//   FastLED.show();
+  FastLED.show();
 }
 
 int testCounter = 0;
@@ -128,34 +141,20 @@ void testDigits() {
 
  
 void setup(){
-//   FastLED.addLeds<NEOPIXEL, 19>(crgbArr[0], LEDS_IN_DIGIT);
-//   FastLED.addLeds<NEOPIXEL, 18>(crgbArr[1], LEDS_IN_DIGIT);
-//   FastLED.addLeds<NEOPIXEL, 5>(crgbArr[2], LEDS_IN_DIGIT);
-//   FastLED.addLeds<NEOPIXEL, 17>(crgbArr[3], LEDS_IN_DIGIT);
-//   FastLED.addLeds<NEOPIXEL, 16>(crgbArr[4], LEDS_IN_DIGIT);
-//   FastLED.addLeds<NEOPIXEL, 4>(crgbArr[5], LEDS_IN_DIGIT);
-//   FastLED.addLeds<NEOPIXEL, 0>(crgbArr[6], LEDS_IN_DIGIT);
-//   FastLED.addLeds<NEOPIXEL, 2>(crgbArr[7], LEDS_IN_DIGIT);
-
-//   FastLED.addLeds<NEOPIXEL, 32>(crgbArr[8], LEDS_IN_DIGIT);
-//   FastLED.addLeds<NEOPIXEL, 33>(crgbArr[9], LEDS_IN_DIGIT);
-//   FastLED.addLeds<NEOPIXEL, 25>(crgbArr[10], LEDS_IN_DIGIT);
-//   FastLED.addLeds<NEOPIXEL, 26>(crgbArr[11], LEDS_IN_DIGIT);
-
     FastLED.addLeds<NEOPIXEL, 19>(*crgbArrHours, LEDS_IN_DIGIT * (NUM_DIGITS/2));
     FastLED.addLeds<NEOPIXEL, 18>(*crgbArrMinutes, LEDS_IN_DIGIT * (NUM_DIGITS/2));
 
     //hours
     for (uint8_t i = 0; i < NUM_DIGITS/2; i++)
     {
-    digits[i].begin(crgbArrHours[i], 20, 19, 1, false, true);
+    digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 20, 19, 1, false, true);
     digits[i].erase();
     }
 
     //minutes
     for (uint8_t i = NUM_DIGITS/2; i < NUM_DIGITS; i++)
     {
-    digits[i].begin(crgbArrMinutes[i], 20, 19, 1, true, true);
+    digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 20, 19, 1, true, true);
     digits[i].erase();
     }
   
@@ -223,6 +222,7 @@ void setup(){
   });
 
   server.on("/color", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "OK");
     if (DEBUG) {
       Serial.print("Set color to: ");
     }
@@ -253,11 +253,23 @@ void setup(){
   });
 
   server.on("/base", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "OK");
     if (request->hasParam("value")) {
       clockBase = request->getParam("value")->value().toInt();
     }
     if (DEBUG) {
       Serial.print("Set to base: ");
+      Serial.println(request->getParam("value")->value());
+    }
+  });
+
+  server.on("/message", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "OK");
+    if (request->hasParam("value")) {
+      message = request->getParam("value")->value();
+    }
+    if (DEBUG) {
+      Serial.print("Setting message to: ");
       Serial.println(request->getParam("value")->value());
     }
   });
@@ -289,6 +301,9 @@ void loop(){
       // tempStr = paddedString(rtc.getSecond(), '0', clockBase, 2) + paddedString(rtc.getMinute(), '0', clockBase, 2);
       tempStr = createBaseTime(clockBase);
       displayString(tempStr);
+      break;
+    case 2: //message mode
+      displayString(message);
       break;
     
     default:
