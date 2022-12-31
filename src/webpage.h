@@ -20,6 +20,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     <option value="0">Debug</option>
     <option value="1">Numeric Time</option>
     <option value="2">Message</option>
+    <option value="3">Roman Numeral Time</option>
   </select>
   <br><br>
   <input type="color" id="colorInput" value="#320000" oninput="setColor()">
@@ -33,12 +34,15 @@ const char index_html[] PROGMEM = R"rawliteral(
   <input type="checkbox" id="militaryCheckbox" oninput="setMilitary()">
   <label for="militaryCheckbox">24 Hour Time</label>
   <br><br>
+  <input type="checkbox" id="wiresCheckbox" oninput="setWires()">
+  <label for="wiresCheckbox">Wires on Top</label>
+  <br><br>
 <script>
 function setTime() {
-  var xhr = new XMLHttpRequest();
-  const time = new Date();
-  xhr.open("GET", "/time?value="+ time.getSeconds().toString().padStart(2, '0') + ',' + time.getMinutes().toString().padStart(2, '0') + ',' + time.getHours().toString().padStart(2, '0') + ',' + time.getDate().toString().padStart(2, '0') + ',' + time.getMonth().toString().padStart(2, '0') + ',' + time.getFullYear(), true);
-  xhr.send();
+    var xhr = new XMLHttpRequest();
+    const time = new Date();
+    xhr.open("GET", "/time?value="+ time.getSeconds().toString().padStart(2, '0') + ',' + time.getMinutes().toString().padStart(2, '0') + ',' + time.getHours().toString().padStart(2, '0') + ',' + time.getDate().toString().padStart(2, '0') + ',' + time.getMonth().toString().padStart(2, '0') + ',' + time.getFullYear(), true);
+    xhr.send();
 }
 
 function setMode() {
@@ -76,6 +80,14 @@ function setMessage() {
   var xhr = new XMLHttpRequest();
   xhr.open("GET", messageStr, true);
   xhr.send();
+}
+
+function setWires() {
+    let requestString = "/wires?value=";
+    requestString += document.getElementById("wiresCheckbox").checked;
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", requestString, true);
+    xhr.send();
 }
 </script>
 </body>

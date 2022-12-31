@@ -4,14 +4,21 @@
 #include "fourteen_segment_digit.h"
 #include <ESP32Time.h>  //for accessing rtc
 #include <elapsedMillis.h>  //provides timing function
+#include <Preferences.h>
 
 
 #define NUM_DIGITS 12
 #define LEDS_IN_DIGIT 251
-#define DEBUG true
+#define DEBUG false
  
 const char *ssid = "bigclock";
 const char *password = "merrychristmas";
+
+const String numerals[60] = {"0","I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX","XX","XXI","XXII","XXIII","XXIV","XXV","XXVI","XXVII","XXVIII","XXIX","XXX","XXXI","XXXII","XXXIII","XXXIV","XXXV","XXXVI","XXXVII","XXXIIX","XXXIX","XL","XLI","XLII","XLIII","XLIV","XLV","XLVI","XLVII","XLVIII","XLIX","L","LI","LII","LIII","LIV","LV","LVI","LVII","LVIII","LIX"};
+
+Preferences preferences;  //stores settings between power cycles
+
+bool wiresTop = false;
 
 uint8_t globalRed = 50;
 uint8_t globalGreen = 0;
@@ -34,15 +41,18 @@ CRGB crgbArrHours[NUM_DIGITS/2][LEDS_IN_DIGIT];
 CRGB crgbArrMinutes[NUM_DIGITS/2][LEDS_IN_DIGIT];
 fourteen_segment_digit digits[NUM_DIGITS];
 
-String paddedString(int unpadded, char padChar, uint8_t base, uint8_t numdigits) {
-  // if (unpadded < 10 || unpadded > -10)  //check if between -10 and 10
-  // {
-  //   return '0' + String(unpadded);
-  // } else {
-  //   return String(unpadded);
-  // }
+String paddedString(int unpadded, char padChar, uint8_t base, uint8_t numDigits) {
   String newStr = String(unpadded, base);
-  while (newStr.length() < numdigits)
+  while (newStr.length() < numDigits)
+  {
+    newStr = padChar + newStr;
+  }
+  return newStr;
+}
+
+String paddedString(String unpadded, char padChar, uint8_t numDigits) {
+  String newStr = unpadded;
+  while (newStr.length() < numDigits)
   {
     newStr = padChar + newStr;
   }
@@ -71,6 +81,11 @@ String createBaseTime(uint8_t base) {
   return baseTime;
 }
 
+String createRomanTime() {
+  String romanTime = paddedString(numerals[rtc.getHour(militaryTime)], ' ', 6) + numerals[rtc.getMinute()];
+  return romanTime;
+}
+
 void displayString(String str) {
   if (DEBUG)
   {
@@ -79,12 +94,11 @@ void displayString(String str) {
   }
   
   uint8_t tempLength = 0;
-  if (str.length() < NUM_DIGITS) {
-    tempLength = str.length();
-  } else {
-    tempLength = NUM_DIGITS;
+  while (str.length() < NUM_DIGITS)
+  {
+    str = str + ' ';
   }
-  for (uint8_t i = 0; i < tempLength; i++)
+  for (uint8_t i = 0; i < NUM_DIGITS; i++)
   {
     digits[i].setChar(str.charAt(i), globalRed, globalGreen, globalBlue);
   }
@@ -101,67 +115,79 @@ void testDigits() {
   
   for (uint8_t i = 0; i < NUM_DIGITS; i++)
   {
-    // if (DEBUG)
-    // {
-    //   Serial.print("i: ");
-    //   Serial.println(i);
-    //   // Serial.print(" ");
-    //   Serial.print("mode: ");
-    //   Serial.println(mode);
-    // }
     digits[i].erase();
     digits[i].setSegment(testCounter, globalRed, globalGreen, globalBlue);
-    // if (DEBUG) {
-    //   Serial.print("mode: ");
-    //   Serial.println(mode);
-    //   Serial.println();
-    // }
   }
   FastLED.show();
-  // if (DEBUG)
-  // {
-  //   // Serial.println();
-  //   Serial.println("finished setting digits");
-  //   Serial.print("mode: ");
-  //   Serial.println(mode);
-  // }
   
   testCounter++;
   if (testCounter >= 14)
   {
     testCounter = 0;
   }
-  
-  // if (DEBUG)
-  // {
-  //   Serial.println("finished testDigits()");
-  // }
-  
 }
 
  
 void setup(){
-    FastLED.addLeds<NEOPIXEL, 19>(*crgbArrHours, LEDS_IN_DIGIT * (NUM_DIGITS/2));
-    FastLED.addLeds<NEOPIXEL, 18>(*crgbArrMinutes, LEDS_IN_DIGIT * (NUM_DIGITS/2));
+    preferences.begin("big-clock", false);
 
-    //hours
-    for (uint8_t i = 0; i < NUM_DIGITS/2; i++)
-    {
-    digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 20, 19, 1, false, true);
-    digits[i].erase();
-    }
+    //load saved values
+    mode = preferences.getUInt("mode", 1);
 
-    //minutes
-    for (uint8_t i = NUM_DIGITS/2; i < NUM_DIGITS; i++)
+    wiresTop = preferences.getBool("wires", false);
+
+    clockBase = preferences.getUInt("base", 10);
+
+    globalRed = preferences.getUInt("red", 50);
+    globalGreen = preferences.getUInt("green", 0);
+    globalBlue = preferences.getUInt("blue", 0);
+
+    militaryTime = preferences.getBool("24h", false);
+
+    if (wiresTop)
     {
-    digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 20, 19, 1, true, true);
-    digits[i].erase();
+        FastLED.addLeds<NEOPIXEL, 19>(*crgbArrHours, LEDS_IN_DIGIT * (NUM_DIGITS/2));
+        FastLED.addLeds<NEOPIXEL, 18>(*crgbArrMinutes, LEDS_IN_DIGIT * (NUM_DIGITS/2));
+
+            //hours
+            for (uint8_t i = 0; i < NUM_DIGITS/2; i++)
+            {
+                digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 20, 19, 1, false, true);
+                digits[i].erase();
+            }
+
+            //minutes
+            for (uint8_t i = NUM_DIGITS/2; i < NUM_DIGITS; i++)
+            {
+                digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 20, 19, 1, true, true);
+                digits[i].erase();
+            }
+    } else {
+        FastLED.addLeds<NEOPIXEL, 18>(*crgbArrHours, LEDS_IN_DIGIT * (NUM_DIGITS/2));
+        FastLED.addLeds<NEOPIXEL, 19>(*crgbArrMinutes, LEDS_IN_DIGIT * (NUM_DIGITS/2));
+
+            //hours
+            for (uint8_t i = 0; i < NUM_DIGITS/2; i++)
+            {
+                digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 20, 19, 1, false, false);
+                digits[i].erase();
+            }
+
+            //minutes
+            for (uint8_t i = NUM_DIGITS/2; i < NUM_DIGITS; i++)
+            {
+                digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 20, 19, 1, true, false);
+                digits[i].erase();
+            }
     }
+    
+
+
   
 
     if (DEBUG)
     {
-    Serial.begin(9600);
+        Serial.begin(9600);
     }
  
     WiFi.softAP(ssid, password);
@@ -202,6 +228,7 @@ void setup(){
         Serial.println(request->getParam("value")->value());
       }
       mode = request->getParam("value")->value().toInt();
+      preferences.putUInt("mode", mode);
     }
   });
 
@@ -214,6 +241,7 @@ void setup(){
       } else if (request->getParam("value")->value() == "false") {
         militaryTime = false;
       }
+      preferences.putBool("24h", militaryTime);
     }
     if (DEBUG) {
       Serial.print("Set 24h time to: ");
@@ -228,6 +256,7 @@ void setup(){
     }
     if (request->hasParam("red")) {
       globalRed = request->getParam("red")->value().toInt();
+      preferences.putUInt("red", globalRed);
       if (DEBUG) {
         Serial.print(globalRed);
         Serial.print(", ");
@@ -235,6 +264,7 @@ void setup(){
     }
     if (request->hasParam("green")) {
       globalGreen = request->getParam("green")->value().toInt();
+      preferences.putUInt("green", globalGreen);
       if (DEBUG) {
         Serial.print(globalGreen);
         Serial.print(", ");
@@ -242,6 +272,7 @@ void setup(){
     }
     if (request->hasParam("blue")) {
       globalBlue = request->getParam("blue")->value().toInt();
+      preferences.putUInt("blue", globalBlue);
       if (DEBUG) {
         Serial.print(globalBlue);
         Serial.print(", ");
@@ -256,6 +287,7 @@ void setup(){
     request->send(200, "text/plain", "OK");
     if (request->hasParam("value")) {
       clockBase = request->getParam("value")->value().toInt();
+      preferences.putUInt("base", clockBase);
     }
     if (DEBUG) {
       Serial.print("Set to base: ");
@@ -270,6 +302,23 @@ void setup(){
     }
     if (DEBUG) {
       Serial.print("Setting message to: ");
+      Serial.println(request->getParam("value")->value());
+    }
+  });
+
+  server.on("/wires", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "OK");
+    if (request->hasParam("value")) 
+    {
+      if (request->getParam("value")->value() == "true") {
+        wiresTop = true;
+      } else if (request->getParam("value")->value() == "false") {
+        wiresTop = false;
+      }
+      preferences.putBool("wires", wiresTop);
+    }
+    if (DEBUG) {
+      Serial.print("Set wiresTop to: ");
       Serial.println(request->getParam("value")->value());
     }
   });
@@ -305,7 +354,10 @@ void loop(){
     case 2: //message mode
       displayString(message);
       break;
-    
+    case 3:
+      tempStr = createRomanTime();
+      displayString(tempStr);
+      break;
     default:
       if(DEBUG) {
         Serial.println("Invalid mode");
