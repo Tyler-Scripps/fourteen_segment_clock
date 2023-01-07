@@ -27,7 +27,9 @@ uint8_t globalBlue = 0;
 bool militaryTime = false;
 uint8_t clockBase = 10;
 
-String message = "";
+String message = "";  //stores message to be displayed in message mode
+int messageIndex = 0; //stores current index of scrolling message
+bool messageScrolling = false;  //wether or not the message should scroll
 
 int mode = 0;
 elapsedMillis lastUpdate;
@@ -40,6 +42,32 @@ AsyncWebServer server(80);
 CRGB crgbArrHours[NUM_DIGITS/2][LEDS_IN_DIGIT];
 CRGB crgbArrMinutes[NUM_DIGITS/2][LEDS_IN_DIGIT];
 fourteen_segment_digit digits[NUM_DIGITS];
+
+CRGB colonLeds[19];
+
+void colonOn() {
+  for (uint8_t i = 0; i < 4; i++)
+  {
+    colonLeds[i].r = globalRed;
+    colonLeds[i].g = globalGreen;
+    colonLeds[i].b = globalBlue;
+
+    colonLeds[19 - 1 - i].r = globalRed;
+    colonLeds[19 - 1 - i].g = globalGreen;
+    colonLeds[19 - 1 - i].b = globalBlue;
+  }
+  
+}
+
+void colonOff() {
+  for (uint8_t i = 0; i < 19; i++)
+  {
+    colonLeds[i].r = 0;
+    colonLeds[i].g = 0;
+    colonLeds[i].b = 0;
+  }
+  
+}
 
 String paddedString(int unpadded, char padChar, uint8_t base, uint8_t numDigits) {
   String newStr = String(unpadded, base);
@@ -144,46 +172,46 @@ void setup(){
 
     militaryTime = preferences.getBool("24h", false);
 
+    //colon
+    FastLED.addLeds<NEOPIXEL, 5>(colonLeds, 19);
+    colonOff();
+
     if (wiresTop)
     {
         FastLED.addLeds<NEOPIXEL, 19>(*crgbArrHours, LEDS_IN_DIGIT * (NUM_DIGITS/2));
         FastLED.addLeds<NEOPIXEL, 18>(*crgbArrMinutes, LEDS_IN_DIGIT * (NUM_DIGITS/2));
+        //hours
+        for (uint8_t i = 0; i < NUM_DIGITS/2; i++)
+        {
+            digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 20, 19, 1, false, true);
+            digits[i].erase();
+        }
 
-            //hours
-            for (uint8_t i = 0; i < NUM_DIGITS/2; i++)
-            {
-                digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 20, 19, 1, false, true);
-                digits[i].erase();
-            }
-
-            //minutes
-            for (uint8_t i = NUM_DIGITS/2; i < NUM_DIGITS; i++)
-            {
-                digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 20, 19, 1, true, true);
-                digits[i].erase();
-            }
+        //minutes
+        for (uint8_t i = NUM_DIGITS/2; i < NUM_DIGITS; i++)
+        {
+            digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 20, 19, 1, true, true);
+            digits[i].erase();
+        }
     } else {
         FastLED.addLeds<NEOPIXEL, 18>(*crgbArrHours, LEDS_IN_DIGIT * (NUM_DIGITS/2));
         FastLED.addLeds<NEOPIXEL, 19>(*crgbArrMinutes, LEDS_IN_DIGIT * (NUM_DIGITS/2));
 
-            //hours
-            for (uint8_t i = 0; i < NUM_DIGITS/2; i++)
-            {
-                digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 20, 19, 1, false, false);
-                digits[i].erase();
-            }
+        //hours
+        for (uint8_t i = 0; i < NUM_DIGITS/2; i++)
+        {
+            digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 20, 19, 1, false, false);
+            digits[i].erase();
+        }
 
-            //minutes
-            for (uint8_t i = NUM_DIGITS/2; i < NUM_DIGITS; i++)
-            {
-                digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 20, 19, 1, true, false);
-                digits[i].erase();
-            }
+        //minutes
+        for (uint8_t i = NUM_DIGITS/2; i < NUM_DIGITS; i++)
+        {
+            digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 20, 19, 1, true, false);
+            digits[i].erase();
+        }
     }
-    
 
-
-  
 
     if (DEBUG)
     {
@@ -197,27 +225,27 @@ void setup(){
     Serial.println("got request");
     });
 
-  server.on("/time", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", "OK");
-    if (request->hasParam("value")) {
-      if (DEBUG) {
-        Serial.print("time: ");
-        Serial.println(request->getParam("value")->value());
-      }
-      displayString(request->getParam("value")->value());
-      //will recieve with month being zero indexed
-      //         s  m  h  d  m  y
-      //example: 19,04,19,10,11,2022
-      //         0123456789012345678
-      String tempString = request->getParam("value")->value();
-      int seconds = tempString.substring(0, 2).toInt();
-      int minutes = tempString.substring(3, 5).toInt();
-      int hours = tempString.substring(6, 8).toInt();
-      int days = tempString.substring(9, 11).toInt();
-      int month = tempString.substring(12, 14).toInt() + 1;
-      int year = tempString.substring(15).toInt();
-      rtc.setTime(seconds, minutes, hours, days, month, year);  //seconds, minutes, hours, day of month, month (1 indexed), year
-    }
+    server.on("/time", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(200, "text/plain", "OK");
+        if (request->hasParam("value")) {
+            if (DEBUG) {
+                Serial.print("time: ");
+                Serial.println(request->getParam("value")->value());
+            }
+            displayString(request->getParam("value")->value());
+            //will recieve with month being zero indexed
+            //         s  m  h  d  m  y
+            //example: 19,04,19,10,11,2022
+            //         0123456789012345678
+            String tempString = request->getParam("value")->value();
+            int seconds = tempString.substring(0, 2).toInt();
+            int minutes = tempString.substring(3, 5).toInt();
+            int hours = tempString.substring(6, 8).toInt();
+            int days = tempString.substring(9, 11).toInt();
+            int month = tempString.substring(12, 14).toInt() + 1;
+            int year = tempString.substring(15).toInt();
+            rtc.setTime(seconds, minutes, hours, days, month, year);  //seconds, minutes, hours, day of month, month (1 indexed), year
+        }
   });
 
   server.on("/mode", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -295,33 +323,46 @@ void setup(){
     }
   });
 
-  server.on("/message", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", "OK");
-    if (request->hasParam("value")) {
-      message = request->getParam("value")->value();
-    }
-    if (DEBUG) {
-      Serial.print("Setting message to: ");
-      Serial.println(request->getParam("value")->value());
-    }
-  });
+    server.on("/message", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(200, "text/plain", "OK");
+        if (request->hasParam("value")) {
+            message = request->getParam("value")->value();
+            if (message.length() > NUM_DIGITS)  //message is too long so it needs to scroll
+            {
+                messageScrolling = true;
+                String spaces = "";
+                for (uint8_t i = 0; i < NUM_DIGITS; i++)
+                {
+                    spaces += ' ';
+                }
+                message = spaces + message + ' ';
+            } else {
+                messageScrolling = false;
+            }
+            
+        }
+        if (DEBUG) {
+            Serial.print("Setting message to: ");
+            Serial.println(request->getParam("value")->value());
+        }
+    });
 
-  server.on("/wires", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", "OK");
-    if (request->hasParam("value")) 
-    {
-      if (request->getParam("value")->value() == "true") {
-        wiresTop = true;
-      } else if (request->getParam("value")->value() == "false") {
-        wiresTop = false;
-      }
-      preferences.putBool("wires", wiresTop);
-    }
-    if (DEBUG) {
-      Serial.print("Set wiresTop to: ");
-      Serial.println(request->getParam("value")->value());
-    }
-  });
+    server.on("/wires", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(200, "text/plain", "OK");
+        if (request->hasParam("value")) 
+        {
+            if (request->getParam("value")->value() == "true") {
+                wiresTop = true;
+            } else if (request->getParam("value")->value() == "false") {
+                wiresTop = false;
+            }
+            preferences.putBool("wires", wiresTop);
+        }
+        if (DEBUG) {
+            Serial.print("Set wiresTop to: ");
+            Serial.println(request->getParam("value")->value());
+        }
+    });
  
   server.begin();
   
@@ -344,25 +385,39 @@ void loop(){
     switch (mode)
     {
     case 0: //testing
-      testDigits();
-      break;
+        testDigits();
+        colonOn();
+        break;
     case 1: //base number mode
-      // tempStr = paddedString(rtc.getSecond(), '0', clockBase, 2) + paddedString(rtc.getMinute(), '0', clockBase, 2);
-      tempStr = createBaseTime(clockBase);
-      displayString(tempStr);
-      break;
+        // tempStr = paddedString(rtc.getSecond(), '0', clockBase, 2) + paddedString(rtc.getMinute(), '0', clockBase, 2);
+        tempStr = createBaseTime(clockBase);
+        colonOn();
+        displayString(tempStr);
+        break;
     case 2: //message mode
-      displayString(message);
-      break;
-    case 3:
-      tempStr = createRomanTime();
-      displayString(tempStr);
-      break;
+        colonOff();
+        if (messageScrolling)
+        {
+            if (messageIndex > message.length())
+            {
+                messageIndex = 0;
+            }
+            displayString(message.substring(messageIndex));
+            messageIndex++;
+        } else {
+            displayString(message);
+        }
+        break;
+    case 3: //romun numeral time mode
+        tempStr = createRomanTime();
+        colonOn();
+        displayString(tempStr);
+        break;
     default:
-      if(DEBUG) {
-        Serial.println("Invalid mode");
-      }
-      break;
+        if(DEBUG) {
+            Serial.println("Invalid mode");
+        }
+        break;
     }
   }
   
