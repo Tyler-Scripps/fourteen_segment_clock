@@ -8,7 +8,7 @@
 
 
 #define NUM_DIGITS 12
-#define LEDS_IN_DIGIT 169
+#define LEDS_IN_DIGIT 251
 #define DEBUG false
  
 const char *ssid = "bigclock";
@@ -183,14 +183,14 @@ void setup(){
         //hours
         for (uint8_t i = 0; i < NUM_DIGITS/2; i++)
         {
-            digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 13, 13, 1, false, true, 1);
+            digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 20, 19, 1, false, true, 2);
             digits[i].erase();
         }
 
         //minutes
         for (uint8_t i = NUM_DIGITS/2; i < NUM_DIGITS; i++)
         {
-            digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 13, 13, 1, true, true, 1);
+            digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 20, 19, 1, true, true, 2);
             digits[i].erase();
         }
     } else {
@@ -200,14 +200,14 @@ void setup(){
         //hours
         for (uint8_t i = 0; i < NUM_DIGITS/2; i++)
         {
-            digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 13, 13, 1, false, false, 1);
+            digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 20, 19, 1, false, false, 2);
             digits[i].erase();
         }
 
         //minutes
         for (uint8_t i = NUM_DIGITS/2; i < NUM_DIGITS; i++)
         {
-            digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 13, 13, 1, true, false, 1);
+            digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 20, 19, 1, true, false, 2);
             digits[i].erase();
         }
     }
