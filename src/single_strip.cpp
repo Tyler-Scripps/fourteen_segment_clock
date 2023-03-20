@@ -9,12 +9,20 @@
 
 #define NUM_DIGITS 12
 #define LEDS_IN_DIGIT 169
-#define DEBUG false
+#define DEBUG true
  
 const char *ssid = "bigclock";
 const char *password = "merrychristmas";
 
 const String numerals[60] = {"0","I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX","XX","XXI","XXII","XXIII","XXIV","XXV","XXVI","XXVII","XXVIII","XXIX","XXX","XXXI","XXXII","XXXIII","XXXIV","XXXV","XXXVI","XXXVII","XXXIIX","XXXIX","XL","XLI","XLII","XLIII","XLIV","XLV","XLVI","XLVII","XLVIII","XLIX","L","LI","LII","LIII","LIV","LV","LVI","LVII","LVIII","LIX"};
+
+//                                    1       2         3        4        5       6         7(1/2)   7(2/2)    10        8          11         12         9         13
+//                                    a       b         c        d        e       f         g        h         i         j          k          l          m         n
+const uint8_t topIndices[14][2] = {{0,12}, {13,25}, {26,38}, {39,51}, {52,64}, {65,77}, {78,83}, {85,90}, {117,129}, {91,103}, {130,142}, {143,155}, {104,116}, {156,168}};
+
+//                                    4        5        6       1        2        3        7(2/2)   7(1/2)    12         9          13         10        8          11
+//                                    a        b        c       d        e        f        g        h         i          j          k          l         m          n
+const uint8_t bottomIndices[14][2] = {{39,51}, {52,64}, {65,77}, {0,12}, {12,25}, {26,38}, {85,90}, {78,83}, {143,155}, {104,116}, {156,168}, {117,129}, {91,103}, {130,142}};
 
 Preferences preferences;  //stores settings between power cycles
 
@@ -144,9 +152,21 @@ void testDigits() {
   for (uint8_t i = 0; i < NUM_DIGITS; i++)
   {
     digits[i].erase();
+    if(DEBUG) {
+      Serial.print("erased digit: ");
+      Serial.println(i);
+    }
     digits[i].setSegment(testCounter, globalRed, globalGreen, globalBlue);
+    if(DEBUG){
+      Serial.print("set segment on digit: ");
+      Serial.println(i);
+    }
   }
   FastLED.show();
+  if(DEBUG) {
+    Serial.print("showed segment: ");
+    Serial.println(testCounter);
+  }
   
   testCounter++;
   if (testCounter >= 14)
@@ -160,7 +180,7 @@ void setup(){
     preferences.begin("big-clock", false);
 
     //load saved values
-    mode = preferences.getUInt("mode", 1);
+    mode = preferences.getUInt("mode", 0);
 
     wiresTop = preferences.getBool("wires", false);
 
@@ -183,14 +203,16 @@ void setup(){
         //hours
         for (uint8_t i = 0; i < NUM_DIGITS/2; i++)
         {
-            digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 13, 13, 1, false, true, 1);
+            // digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 13, 13, 1, false, true, 1);
+            digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], topIndices);
             digits[i].erase();
         }
 
         //minutes
         for (uint8_t i = NUM_DIGITS/2; i < NUM_DIGITS; i++)
         {
-            digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 13, 13, 1, true, true, 1);
+            // digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 13, 13, 1, true, true, 1);
+            digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], topIndices);
             digits[i].erase();
         }
     } else {
@@ -200,14 +222,16 @@ void setup(){
         //hours
         for (uint8_t i = 0; i < NUM_DIGITS/2; i++)
         {
-            digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 13, 13, 1, false, false, 1);
+            // digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], 13, 13, 1, false, false, 1);
+            digits[i].begin(crgbArrHours[NUM_DIGITS/2-1-i], bottomIndices);
             digits[i].erase();
         }
 
         //minutes
         for (uint8_t i = NUM_DIGITS/2; i < NUM_DIGITS; i++)
         {
-            digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 13, 13, 1, true, false, 1);
+            // digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], 13, 13, 1, true, false, 1);
+            digits[i].begin(crgbArrMinutes[i - (NUM_DIGITS/2)], bottomIndices);
             digits[i].erase();
         }
     }
