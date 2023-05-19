@@ -51,24 +51,21 @@ CRGB crgbArrHours[NUM_DIGITS/2][LEDS_IN_DIGIT];
 CRGB crgbArrMinutes[NUM_DIGITS/2][LEDS_IN_DIGIT];
 fourteen_segment_digit digits[NUM_DIGITS];
 
-CRGB colonLeds[19];
+CRGB colonLeds[10];
 
 void colonOn() {
-  for (uint8_t i = 0; i < 4; i++)
+  for (uint8_t i = 0; i < 10; i++)
   {
     colonLeds[i].r = globalRed;
     colonLeds[i].g = globalGreen;
     colonLeds[i].b = globalBlue;
 
-    colonLeds[19 - 1 - i].r = globalRed;
-    colonLeds[19 - 1 - i].g = globalGreen;
-    colonLeds[19 - 1 - i].b = globalBlue;
   }
   
 }
 
 void colonOff() {
-  for (uint8_t i = 0; i < 19; i++)
+  for (uint8_t i = 0; i < 10; i++)
   {
     colonLeds[i].r = 0;
     colonLeds[i].g = 0;
@@ -193,7 +190,7 @@ void setup(){
     militaryTime = preferences.getBool("24h", false);
 
     //colon
-    FastLED.addLeds<NEOPIXEL, 5>(colonLeds, 19);
+    FastLED.addLeds<NEOPIXEL, 5>(colonLeds, 10);
     colonOff();
 
     if (wiresTop)
